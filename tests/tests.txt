@@ -1,0 +1,40 @@
+- Calling Interface(cls) on a non-class throws TypeError
+- Calling @implements(Interface) on a non-class throws TypeError
+- Calling implements(Interface) on a non-Interface throws TypeError
+- Calling _implements(cls, Interface) on a non-class throws TypeError
+- Calling _implements(cls, Interface) on a non-Interface throws TypeError
+
+- Signature checking is only applied when enabled, and is performed correctly
+- Annotation checking is only applied when enabled, and is performed correctly
+
+- Calculator1 and Calculator2 are equivalent:
+
+  class MaxInt(Interface):
+      max_int: int
+
+  class Addition(Interface):
+      def add(x: int, y:int) -> int:
+        pass
+
+  class Subtraction(Interface):
+      def subtract(x: int, y:int) -> int:
+        pass
+
+  @MaxInt(check_signatures=True, check_annotations=True)
+  @Subtraction(check_signatures=True, check_annotations=True)
+  @Addition(check_signatures=True, check_annotations=True)
+  class Calculator1():
+      max_int: int = 100
+      def add(x: int, y: int) -> int:
+          return x + y
+      def subtract(x: int, y: int) -> int:
+          return x - y
+
+  @implements(Addition, Subtraction, MaxInt, check_signatures=True, check_annotations=True)
+  class Calculator2():
+      max_int: int = 100
+      def add(x: int, y: int) -> int:
+          return x + y
+      def subtract(x: int, y: int) -> int:
+          return x - y
+
