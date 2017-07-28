@@ -21,22 +21,51 @@ Examples
     class Addition(Interface):
         max_int: int
 
-        def add(self, x: int, y:int) -> int:
+        def add(self, x: int, y: int) -> int:
             pass
 
     @implements(Addition)
     class Calculator():
         max_int: int = 2**8
 
-        def add(self, x: int, y:int) -> int:
+        def add(self, x: int, y: int) -> int:
             return x + y
 
-        @classmethod
-        def print_max_int(cls):
-            return 'Max int: ' + str(cls.max_int)
-
-        @staticmethod
-        def stringify(x):
-            return str(x)
-
     assert hasinterface(Calculator, Addition)
+
+
+    ## Fails on missing attributes
+
+    try:
+        @implements(Addition)
+        class Calculator():
+            def add(self, x: int, y: int) -> int:
+                return x + y
+    except Exception as e:
+        print(e)
+
+
+    ## Fails on incorrect signatures
+
+    try:
+        @implements(Addition, check_signatures=True)
+        class Calculator():
+            max_int: int = 2**8
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)
+
+
+    ## Fails on incorrect annotations
+
+    try:
+        @implements(Addition, check_annotations=True)
+        class Calculator():
+            max_int: None = None
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)

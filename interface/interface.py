@@ -1,7 +1,6 @@
 # TODO: README & documentation
 # TODO: Tests
 # TODO: Look for prior art
-# TODO: return sentinel values in _check_* methods, rather than blithely throwing errors
 # TODO: decide how to handle inconsistency between annotation and type
 # TODO: single-source versioning in setup.py
 
@@ -25,61 +24,45 @@ class InterfaceType(type):
 
 
 class Interface(metaclass=InterfaceType):
-    @classmethod
-    def _check_callable_signature(cls, actual, expected):
-        expected_signature = inspect.signature(expected_val)
-        actual_signature = inspect.signature(actual_val)
-
-        if expected_signature != actual_signature:
-            return ValueError('Signature mismatch for callable attribute {attr_name}:\n\tActual: {actual_signature!s}\n\tExpected: {expected_signature!s}'.\
-                              format(attr_name, actual_signature=actual_signature, expected_signature=expected_signature))
-
-    @classmethod
-    def _check_annotation(attr_name, decorated_class):
-        if attr_name in cls.__annotations__:
-            expected_annotation = cls.__annotations__[attr_name]
-            try:
-                actual_annotation = decorated_class.__annotations__[attr_name]
-            except KeyError:
-                return ValueError('Attribute {attr_name} has no annotation, but should have annotation {expected_annotation!s}'.\
-                                  format(attr_name=attr_name, expected_annotation=expected_annotation))
-
-            if expected_annotation != actual_annotation:
-                return ValueError('Annotation mismatch for attribute {attr_name}:\n\tActual: {actual_annotation!s}\n\tExpected: {expected_annotation!s}'.\
-                                  format(attr_name=attr_name, actual_annotation=actual_annotation, expected_annotation=expected_annotation))
-
-    @classmethod
-    def _check_attr(cls, attr_name, decorated_class,
-                    check_signatures, check_annotations):
-        try:
-            actual_val = getattr(decorated_class, attr_name)
-        except AttributeError:
-            return ValueError('Class {deco.__name__} is missing required attribute {attr_name}'.\
-                              format(deco=decorated_class, attr_name=attr_name))
-
-        expected_val = cls.__required_attrs__[attr_name]
-
-        if callable(expected_val):
-            if check_signatures:
-                error = cls._check_callable_signature(actual_val, expected_val)
-                if error:
-                    return error
-        else:
-            if check_annotations:
-                error = cls._check_annotation(attr_name, decorated_class)
-                if error:
-                    return error
-
     def __new__(cls, decorated_class, check_signatures=False, check_annotations=False):
         if not isinstance(decorated_class, type):
-            raise TypeError('Interfaces can only be applied to types')
+            raise TypeError('Interfaces can only be applied to classes')
+
+        if check_annotations:
+            # get annotations before we start looping,
+            # so we don't have to do it every iteration
+            actual_annotations = getattr(decorated_class, '__annotations__', {})
+            expected_annotations = cls.__annotations__
+        else:
+            expected_annotations = {}
 
         for attr_name in cls.__required_attrs__:
-            error = cls._check_attr(attr_name, decorated_class,
-                                    check_signatures=check_signatures,
-                                    check_annotations=check_annotations)
-            if error:
-                raise error
+            try:
+                actual_val = getattr(decorated_class, attr_name)
+            except AttributeError:
+                raise ValueError('Class {deco.__name__} is missing required attribute {attr_name}'.\
+                                 format(deco=decorated_class, attr_name=attr_name))
+            expected_val = cls.__required_attrs__[attr_name]
+
+            if attr_name in expected_annotations:
+                expected_annotation = expected_annotations[attr_name]
+                try:
+                    actual_annotation = actual_annotations[attr_name]
+                except KeyError:
+                    raise ValueError('Attribute {attr_name} has no annotation, but should have annotation {expected_annotation!s}'.\
+                                     format(attr_name=attr_name, expected_annotation=expected_annotation))
+
+                if expected_annotation != actual_annotation:
+                    raise ValueError('Annotation mismatch for attribute {attr_name}:\n\tActual: {actual_annotation!s}\n\tExpected: {expected_annotation!s}'.\
+                                     format(attr_name=attr_name, actual_annotation=actual_annotation, expected_annotation=expected_annotation))
+            else:
+                if check_signatures:
+                    expected_signature = inspect.signature(expected_val)
+                    actual_signature = inspect.signature(actual_val)
+
+                    if expected_signature != actual_signature:
+                        raise ValueError('Signature mismatch for callable attribute {attr_name}:\n\tActual: {actual_signature!s}\n\tExpected: {expected_signature!s}'.\
+                                         format(attr_name=attr_name, actual_signature=actual_signature, expected_signature=expected_signature))
 
         if not hasattr(decorated_class, '__implements__'):
             decorated_class.__implements__ = frozenset({cls})
@@ -116,27 +99,54 @@ def hasinterface(cls, interface):
 
 
 if __name__ == '__main__':
-    # from interface import Interface, 
-
     class Addition(Interface):
         max_int: int
 
-        def add(self, x: int, y:int) -> int:
+        def add(self, x: int, y: int) -> int:
             pass
 
     @implements(Addition)
     class Calculator():
         max_int: int = 2**8
 
-        def add(self, x: int, y:int) -> int:
+        def add(self, x: int, y: int) -> int:
             return x + y
 
-        @classmethod
-        def print_max_int(cls):
-            return 'Max int: ' + str(cls.max_int)
-
-        @staticmethod
-        def stringify(x):
-            return str(x)
-
     assert hasinterface(Calculator, Addition)
+
+
+    ## Fails on missing attributes
+
+    try:
+        @implements(Addition)
+        class Calculator():
+            def add(self, x: int, y: int) -> int:
+                return x + y
+    except Exception as e:
+        print(e)
+
+
+    ## Fails on incorrect signatures
+
+    try:
+        @implements(Addition, check_signatures=True)
+        class Calculator():
+            max_int: int = 2**8
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)
+
+
+    ## Fails on incorrect annotations
+
+    try:
+        @implements(Addition, check_annotations=True)
+        class Calculator():
+            max_int: None = None
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)
