@@ -56,7 +56,7 @@ class Interface(metaclass=InterfaceType):
                     raise ValueError('Annotation mismatch for attribute {attr_name}:\n\tActual: {actual_annotation!s}\n\tExpected: {expected_annotation!s}'.\
                                      format(attr_name=attr_name, actual_annotation=actual_annotation, expected_annotation=expected_annotation))
             else:
-                if check_signatures:
+                if check_signatures and callable(actual_val):
                     expected_signature = inspect.signature(expected_val)
                     actual_signature = inspect.signature(actual_val)
 
