@@ -3,6 +3,17 @@ Interfaces for Python
 
 No dependencies! Requires Python 3.6+ (for now).
 
+Installation
+------------
+
+.. code-block:: shell
+
+    pip3 install git+https://github.com/gwerbin/python-interface.git
+
+
+Examples
+--------
+
 .. code-block:: python
 
     # from interface import Interface, implements
