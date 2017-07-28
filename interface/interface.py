@@ -6,6 +6,7 @@
 # TODO: single-source versioning in setup.py
 
 
+import inspect
 from functools import partial
 
 
