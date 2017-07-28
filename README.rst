@@ -69,3 +69,16 @@ Examples
                 return x + y
     except Exception as e:
         print(e)
+
+
+    ## Fails on incorrect types (!)
+
+    try:
+        @implements(Addition, enforce_annotations=True)
+        class Calculator():
+            max_int: int = None
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)

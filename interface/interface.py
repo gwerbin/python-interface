@@ -24,9 +24,12 @@ class InterfaceType(type):
 
 
 class Interface(metaclass=InterfaceType):
-    def __new__(cls, decorated_class, check_signatures=False, check_annotations=False):
+    def __new__(cls, decorated_class, check_signatures=False, check_annotations=False, enforce_annotations=False):
         if not isinstance(decorated_class, type):
             raise TypeError('Interfaces can only be applied to classes')
+
+        if enforce_annotations:
+            check_annotations = True
 
         if check_annotations:
             # get annotations before we start looping,
@@ -55,7 +58,20 @@ class Interface(metaclass=InterfaceType):
                 if expected_annotation != actual_annotation:
                     raise ValueError('Annotation mismatch for attribute {attr_name}:\n\tActual: {actual_annotation!s}\n\tExpected: {expected_annotation!s}'.\
                                      format(attr_name=attr_name, actual_annotation=actual_annotation, expected_annotation=expected_annotation))
+
+                if enforce_annotations:
+                    if not isinstance(actual_val, expected_annotation):
+                        raise ValueError('Type mismatch for attribute {attr_name}:\n\tActual: {actual_type!s}\n\tExpected: {expected_annotation!s}'.\
+                                         format(attr_name=attr_name, actual_type=type(actual_val), expected_annotation=expected_annotation))
+
             else:
+                # check if actual_val is callable, and not expected val,
+                # because if you do something silly like
+                #    class X():
+                #        value: int = int
+                # it might erroneously try to check the signature of `value`
+                # and compare it to the signature of `int`; this will often fail,
+                # and will otherwise be incorrect
                 if check_signatures and callable(actual_val):
                     expected_signature = inspect.signature(expected_val)
                     actual_signature = inspect.signature(actual_val)
@@ -145,6 +161,19 @@ if __name__ == '__main__':
         @implements(Addition, check_annotations=True)
         class Calculator():
             max_int: None = None
+
+            def add(self, x: float, y: float) -> float:
+                return x + y
+    except Exception as e:
+        print(e)
+
+
+    ## Fails on incorrect types (!)
+
+    try:
+        @implements(Addition, enforce_annotations=True)
+        class Calculator():
+            max_int: int = None
 
             def add(self, x: float, y: float) -> float:
                 return x + y
