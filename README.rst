@@ -1,7 +1,7 @@
 Interfaces for Python
 =====================
 
-No dependencies!
+No dependencies! Requires Python 3.6+ (for now).
 
 .. code-block:: python
 
